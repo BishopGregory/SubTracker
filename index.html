@@ -159,6 +159,25 @@
     font-size: 14px;
   }
   #delete-btn { background: transparent; color: var(--danger); border: none; font-size: 14px; }
+  #push-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 14px;
+    font-size: 13px;
+  }
+  #push-card button {
+    margin-top: 8px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+  #push-card button:disabled { opacity: 0.6; }
+  #push-status { color: var(--text-dim); margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -177,6 +196,12 @@
 </header>
 
 <main>
+  <div id="push-card">
+    <div><strong>Reminders</strong> — get a push notification 7 days and 1 day before each key date.</div>
+    <button id="push-btn">Enable notifications</button>
+    <div id="push-status"></div>
+  </div>
+
   <div id="sync-status"></div>
   <div id="list"></div>
   <p id="empty" hidden>No subscriptions in this view.</p>
@@ -247,6 +272,8 @@
   </form>
 </dialog>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js"></script>
 <script src="./app.js"></script>
 </body>
 </html>

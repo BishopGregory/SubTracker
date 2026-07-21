@@ -3,9 +3,24 @@
 // ---------------------------------------------------------------------------
 // Paste your deployed Apps Script Web App URL below (Deploy > Manage deployments
 // > copy the "Web app" URL) and flip USE_MOCK_DATA to false. See README.md.
+//
+// FIREBASE_CONFIG and VAPID_KEY come from the Firebase console (Project
+// settings > General > Your apps, and Project settings > Cloud Messaging >
+// Web Push certificates). Both are public values, safe to commit — see
+// README.md "Notifications" for the click-by-click. Leave FIREBASE_CONFIG.apiKey
+// as the placeholder to leave push notifications disabled entirely.
 const CONFIG = {
   WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbwKj0VLInTMGCY_T0v9sQTgh01R54uf3kFsIXllrpV1akL7AbHlMh74BCPWwEUwjIav/exec',
   USE_MOCK_DATA: false,
+  FIREBASE_CONFIG: {
+    apiKey: 'AIzaSyBgP_ljWRnhNfBx28itxW035p_0AC7o6rU',
+    authDomain: 'subtracker-951e1.firebaseapp.com',
+    projectId: 'subtracker-951e1',
+    storageBucket: 'subtracker-951e1.firebasestorage.app',
+    messagingSenderId: '205740684172',
+    appId: '1:205740684172:web:0c82383f2a852040c99ca9',
+  },
+  VAPID_KEY: 'BLfiD6mLQZS9M7gRM7ghphb5e4beYnEtYSgTZjokEpW4MoQS4vCYtcJzNMfiVeTH1iaRFBWCzDVRYQpHehXnGos',
 };
 
 const BILLING_CYCLES = ['monthly', 'annual'];
@@ -121,6 +136,11 @@ const Api = {
       return { id };
     }
     return postAction('delete', { id });
+  },
+
+  async subscribePush(token) {
+    if (CONFIG.USE_MOCK_DATA) return { ok: true };
+    return postAction('subscribeFcm', { token });
   },
 };
 
@@ -361,17 +381,72 @@ document.querySelectorAll('[data-filter]').forEach((btn) => {
 document.getElementById('refresh-btn').addEventListener('click', loadSubscriptions);
 
 // ---------------------------------------------------------------------------
-// Service worker (offline shell caching only — see README re: push)
+// Service worker + push notifications (Firebase Cloud Messaging)
 // ---------------------------------------------------------------------------
 async function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return null;
   return navigator.serviceWorker.register('./sw.js');
 }
 
+const pushBtn = document.getElementById('push-btn');
+const pushStatusEl = document.getElementById('push-status');
+const pushConfigured = CONFIG.FIREBASE_CONFIG.apiKey !== 'PASTE_YOUR_FIREBASE_API_KEY_HERE';
+
+function isStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+async function refreshPushButtonState(registration) {
+  if (!pushConfigured || !('serviceWorker' in navigator) || !('PushManager' in window)) {
+    pushBtn.hidden = true;
+    return;
+  }
+  if (!isStandalone() && /iP(hone|ad|od)/.test(navigator.userAgent)) {
+    pushStatusEl.textContent = 'Add SubTracker to your Home Screen, then reopen it from there to enable notifications (iOS 16.4+).';
+    pushBtn.disabled = true;
+    return;
+  }
+  const messaging = firebase.messaging();
+  try {
+    const existingToken = await messaging.getToken({ vapidKey: CONFIG.VAPID_KEY, serviceWorkerRegistration: registration });
+    pushBtn.textContent = existingToken ? 'Notifications enabled' : 'Enable notifications';
+    pushBtn.disabled = !!existingToken;
+    pushStatusEl.textContent = existingToken ? 'You’ll get a reminder 7 days and 1 day before each key date.' : '';
+  } catch (err) {
+    // No permission granted yet — leave the button in its default state.
+  }
+}
+
+async function enablePush(registration) {
+  try {
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') {
+      pushStatusEl.textContent = 'Notification permission was not granted.';
+      return;
+    }
+    firebase.initializeApp(CONFIG.FIREBASE_CONFIG);
+    const messaging = firebase.messaging();
+    const token = await messaging.getToken({ vapidKey: CONFIG.VAPID_KEY, serviceWorkerRegistration: registration });
+    await Api.subscribePush(token);
+    await refreshPushButtonState(registration);
+  } catch (err) {
+    console.error(err);
+    pushStatusEl.textContent = 'Could not enable notifications. See console for details.';
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
 (async function init() {
-  await registerServiceWorker();
+  const registration = await registerServiceWorker();
   await loadSubscriptions();
+
+  if (pushConfigured && registration) {
+    firebase.initializeApp(CONFIG.FIREBASE_CONFIG);
+    pushBtn.addEventListener('click', () => enablePush(registration));
+    await refreshPushButtonState(registration);
+  } else {
+    pushBtn.hidden = true;
+  }
 })();

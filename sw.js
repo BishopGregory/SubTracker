@@ -43,5 +43,33 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Push notifications are not implemented yet — see README.md "Notifications
-// (not yet implemented)" for why and the recommended follow-up (FCM).
+// --- Push notifications (Firebase Cloud Messaging) ---
+// Must match CONFIG.FIREBASE_CONFIG in app.js exactly (both are public values).
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyBgP_ljWRnhNfBx28itxW035p_0AC7o6rU',
+  authDomain: 'subtracker-951e1.firebaseapp.com',
+  projectId: 'subtracker-951e1',
+  storageBucket: 'subtracker-951e1.firebasestorage.app',
+  messagingSenderId: '205740684172',
+  appId: '1:205740684172:web:0c82383f2a852040c99ca9',
+};
+
+if (FIREBASE_CONFIG.apiKey !== 'PASTE_YOUR_FIREBASE_API_KEY_HERE') {
+  importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
+  importScripts('https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js');
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const messaging = firebase.messaging();
+
+  // Fires when a push arrives while the app isn't in the foreground — the
+  // only case that matters for a reminder app. Foreground pushes are handled
+  // by the Firebase SDK's default in-page behavior.
+  messaging.onBackgroundMessage((payload) => {
+    const notification = payload.notification || {};
+    self.registration.showNotification(notification.title || 'SubTracker', {
+      body: notification.body || '',
+      icon: './icons/icon-192.png',
+      badge: './icons/icon-192.png',
+      tag: 'subtracker-reminder',
+    });
+  });
+}

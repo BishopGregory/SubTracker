@@ -4,7 +4,7 @@
 // Paste your deployed Apps Script Web App URL below (Deploy > Manage deployments
 // > copy the "Web app" URL) and flip USE_MOCK_DATA to false. See README.md.
 const CONFIG = {
-  WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbxCTiiS9jTUlt7c2CVInvVscLl7VZTZi_SmokLb-kCIj6MqIbDpPPmQ2sH6_eCyR9V_ag/exec',
+  WEBAPP_URL: 'https://script.google.com/macros/s/AKfycbwKj0VLInTMGCY_T0v9sQTgh01R54uf3kFsIXllrpV1akL7AbHlMh74BCPWwEUwjIav/exec',
   USE_MOCK_DATA: false,
 };
 

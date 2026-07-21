@@ -1,4 +1,4 @@
-const CACHE_NAME = 'subtracker-v1';
+const CACHE_NAME = 'subtracker-v2';
 const SHELL_ASSETS = [
   './',
   './index.html',
@@ -22,15 +22,24 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Only cache-first our own shell files. Everything else (Apps Script API calls,
-// cross-origin requests) goes straight to the network so data is never stale.
+// Network-first for our own shell files, falling back to cache only when
+// offline — cache-first would keep serving a stale app.js/index.html forever
+// once installed, since the browser has no reason to know the content
+// changed. Everything else (Apps Script API calls, cross-origin requests)
+// goes straight to the network untouched.
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (event.request.method !== 'GET' || url.origin !== self.location.origin) {
     return;
   }
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
 
